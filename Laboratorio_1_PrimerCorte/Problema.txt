@@ -1,0 +1,15 @@
+Practica de laboratorio en lenguaje ensamblador
+
+
+Desarrollar un programa con 4 pulsadores, 4 leds y un display siete segmentos.
+Los pulsadores funcionarán como sensores de uan alarma, de tal forma que 
+cuando alguno de ellos se oprime (oprimir soltar), en el display aparece el 
+número de pulsador (1,2,3 o 4) y se  prende el led correspondiente 
+(un led para cada pulsador) papadeando con intervalos de 500ms (los leds
+permanecen papadeando a medida que se oprime el siguiente pulsador, es decir,
+si se han oprimido tres pulsadores debe haber tres leds papadeano). Debe existir
+un quinto pulsador, que al oprimirlo 3 veces debe comenzar un conteo de uno en 
+uno desde 3 hasta 9 (tiempos de 0.8 segundos), luego reinicia (apaga los leds y
+pone el display en cero). Si se activan 2 o tres pulsadores al tiempo se prenden
+todos los leds durante 1 segundo y luego se apagan el display queda en cero.
+Implementar en arduino UNO. 
