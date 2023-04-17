@@ -1,4 +1,4 @@
-//BARS
+// BARS JADS
 //Librerias
 #include<Wire.h>
 #include <Adafruit_GFX.h>
@@ -13,52 +13,70 @@
 Adafruit_SSD1306 display(anchoPantalla,altoPantalla);
 //---------------------------------------------------------------
 
-//Variables globales puertos
+//Variables globales puerto LEDS y SSD
+const byte dato[10] = {0XC0, 0XF9, 0XA4, 0XB0, 0X99, 0X92, 0X82, 0XF8, 0X80, 0X98}; //Listado de numeros 0-9 ANODO COMUN SSD
+int conteo[4][3] = {{0, 0, 0} , {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};  //Voltaje,Temperatura,Resistencia,luz
+int i = 0, j = 0, k = 0;
 byte leds = 0x00;
 int leer;
 bool vacio=true;
 //---------------------------------------------------------------
 
+
+//Variables para medir voltaje
+float voltaje_leido;
+float voltaje_real;
+bool band_voltaje = false;
+short int contador_voltaje = 0;
+//--------------------------------------------------------------
+
+
 //Variables sensor luz
-const float Vin_luz=4.99;
-const float Vmin_luz=0.09;
-const float Vmax_luz=4.89;
-const float R1_luz=9700;
+const float Vin_luz = 4.99;
+const float Vmin_luz = 0.09;
+const float Vmax_luz = 4.89;
+const float R1_luz = 9700;
 float distancia_luz=(Vmax_luz-Vmin_luz)/100;
 float porcentaje_luz;
 float Vout_luz;
-bool band2 = false;
-short int contador2=0;
+bool band_luz = false;
+short int contador_luz = 0;
 //----------------------------------------------------------------
 
 
 //Variables de medidor resistencia
-short int contador1=0;
-bool band1=false;
+short int contador_resistencia = 0;
+bool band_resistencia = false;
 const float R1_resistencia = 9670;
 const float Vin_resistencia = 4.99;
-float Vout_resistencia=0;
+float Vout_resistencia = 0;
 int R2_resistencia;
 //----------------------------------------------------------------
 
 
 //Variables de temperatura----------------------------------------
-short int contador3 = 0;
-bool band3=false;
+short int contador_temperatura = 0;
+bool band_temperatura = false;
 float valor_temperatura;
 float Vout_temperatura;
 float temperatura_celsius;
 //-----------------------------------------------------------------
 
 //Calculos de las variables en loop
+
+void calculo_voltaje(){
+  voltaje_leido = (analogRead(A0)* 5)/1023.0;
+  voltaje_real = voltaje_leido * (50/4.6);
+}
+
 void calculo_resistencia(){
-  float valor_resistencia=analogRead(A2);
-  Vout_resistencia=valor_resistencia*0.00488;
-  R2_resistencia = (Vout_resistencia*R1_resistencia)/(Vin_resistencia-Vout_resistencia);
+  float valor_resistencia = analogRead(A1);
+  Vout_resistencia=valor_resistencia * 0.00488;
+  R2_resistencia = (Vout_resistencia * R1_resistencia) / (Vin_resistencia-Vout_resistencia);
 }
 
 void calculo_luz(){
-  float valor_luz = analogRead(A3);
+  float valor_luz = analogRead(A2);
   Vout_luz = valor_luz*0.00488;
   porcentaje_luz = 100 -( Vout_luz - Vmin_luz )/distancia_luz;
   if(porcentaje_luz >= 100.0) porcentaje_luz = 100;
@@ -68,7 +86,7 @@ void calculo_luz(){
 }
 
 void calculo_temperatura(){
-  valor_temperatura = analogRead(A4);
+  valor_temperatura = analogRead(A3);
   Vout_temperatura = (valor_temperatura/1023)*5000;
   temperatura_celsius = Vout_temperatura/10;
 }
@@ -76,42 +94,57 @@ void calculo_temperatura(){
 
 
 void parpadeo(){
-  if (band1==true){
+  if (band_voltaje == true){
     leds = leds | 0x01; 
   }
 
-  if (band2==true){
+  if (band_resistencia == true){
     leds = leds | 0x02; 
   }
 
-  PORTB=leds; //Enciende leds
+  if (band_luz == true){
+    leds = leds | 0x04; 
+  }
+
+  if (band_temperatura == true){
+    leds = leds | 0x08; 
+  }
+
+  PORTB = leds; //Enciende leds
   delay(100);
-  PORTB=0X00; //Apaga leds (parpadeo)
+  PORTB = 0X00; //Apaga leds (parpadeo)
   delay(100);
 
 }
 
+
 //--------Banderas para activar variables---------
+
+void voltaje(){
+  band_voltaje = true;
+  vacio = false;
+}
+
 void resistencia(){
-  band1 = true;
+  band_resistencia = true;
   vacio = false;
 }
 
 void luz(){
-  band2 = true;
+  band_luz = true;
   vacio = false;
 }
 
 
 void temperatura(){
-  band3 = true;
+  band_temperatura = true;
   vacio = false;
 }
 //----------------------------------------------------
 
 void mostrar(){
 
-  if (vacio==true){
+  if (vacio == true){
     display.clearDisplay();
     //display.setTextSize(1);
     display.setCursor(0,10);
@@ -120,42 +153,54 @@ void mostrar(){
     delay(10);
   }
 
-  if (vacio==false){
+  if (vacio == false){
     
     display.clearDisplay();
 
-
-   if(band1 == true) {
-      display.setTextColor(WHITE);
+   if(band_voltaje == true) {
+      display.setTextColor(WHITE);      
     }else{
       display.setTextColor(BLACK);
    }
    // display.setTextSize(1);
     display.setCursor(0,10);
+    display.print("Voltaje: ");
+    display.println(voltaje_real);
+
+
+
+
+   if(band_resistencia == true) {
+      display.setTextColor(WHITE);
+    }else{
+      display.setTextColor(BLACK);
+   }
+   // display.setTextSize(1);
+    display.setCursor(0,20);
     display.print("Resistencia es: ");
     display.println(R2_resistencia);
     
 
 
-    if(band2 == true) {
+    if(band_luz == true) {
       display.setTextColor(WHITE);
     }else{
       display.setTextColor(BLACK);
     }
    // display.setTextSize(1);
-    display.setCursor(0,20);
+    display.setCursor(0,30);
     display.print("Luz: ");
     display.print(porcentaje_luz);
     display.println(" % ");
 
     
-    if(band3 == true) {
+    if(band_temperatura == true) {
       display.setTextColor(WHITE);
     }else{
       display.setTextColor(BLACK);
     }
     display.cp437(true);
-    display.setCursor(0,30);
+    display.setCursor(0,40);
     display.print("Temperatura: ");
     display.print(temperatura_celsius);
     display.write(167);
@@ -163,7 +208,7 @@ void mostrar(){
     
 
 
-    if(temperatura_celsius < 29) {
+    if(temperatura_celsius > 29) {
       display.setTextColor(WHITE);
     }else{
       display.setTextColor(BLACK);
@@ -173,7 +218,47 @@ void mostrar(){
 
     display.display();
   }
+  
+  mostrar_SSD();
 }
+
+
+void incremento_SSD(int a){
+
+  i=conteo[a][0]; //Unidades 
+  j=conteo[a][1]; //Decenas
+  k=conteo[a][2]; //Centenas
+  i++;
+  if(i>9){
+    j=j+(i/10);
+    i%=10;
+  }
+  if(j>9){
+    k++;    
+    j=0;
+    i=0;  
+  }
+  conteo[a][0]=i;
+
+  mostrar_SSD();
+}
+
+
+
+
+
+
+
+void mostrar_SSD(){
+  
+  PORTA = dato[i];   //A unidades
+  delay(20);
+
+}
+
+
+
+
 
 
 void pulsa(int caso) { //Solo ejecuta la accion se se sueltan el o los pulsadores
@@ -182,27 +267,56 @@ void pulsa(int caso) { //Solo ejecuta la accion se se sueltan el o los pulsadore
     parpadeo();
   }
 
-  if(caso==0){
-    contador1++;
-    if (contador1>1){
+
+  if(caso == 0){     //En caso de presionar pulsador 1 
+    contador_voltaje++;
+    contador_luz = 0;
+    contador_temperatura = 0;
+    contador_resistencia = 0;
+    if (contador_voltaje >= 2){
+      voltaje();
+      incremento_SSD(0);
+      contador_voltaje = 0;
+    }
+  }
+
+
+
+  if(caso == 2){      //En caso de presionar pulsadores 1 y 4
+    contador_resistencia++;
+    contador_luz = 0;
+    contador_temperatura = 0;
+    contador_voltaje = 0;
+    if (contador_resistencia >= 3){
       resistencia();
-      contador1=0;
+          incremento_SSD(2);
+      contador_resistencia = 0;
     }
   }
 
-  if (caso==1){
-    contador2++;
-    if (contador2>1){
+
+  if (caso == 3){
+    contador_luz++;
+    contador_resistencia = 0; 
+    contador_temperatura = 0;
+    contador_voltaje = 0;
+    if (contador_luz >= 4){
       luz();
-      contador2=0;
+      incremento_SSD(3);
+      contador_luz = 0;
     }
   }
 
-  if (caso==2){
-    contador3++;
-    if (contador3>1){
+
+  if (caso == 1){    //Caso temperatura
+    contador_temperatura++;
+    contador_resistencia = 0;
+    contador_luz = 0;
+    contador_voltaje = 0;
+    if (contador_temperatura >= 2){
       temperatura();
-      contador3=0;
+      incremento_SSD(1);
+      contador_temperatura = 0;
     }
   }
   
@@ -211,8 +325,9 @@ void pulsa(int caso) { //Solo ejecuta la accion se se sueltan el o los pulsadore
 
 void setup() {
   Serial.begin(9600);
-  DDRL=0X00; //Puerto pulsador
-  DDRB=0xFF; //LEDS 
+  DDRA = 0X00; //SSD
+  DDRL = 0X00; //Puerto pulsador
+  DDRB = 0xFF; //LEDS 
   delay(100); //Para que inicie bien el OLED
   
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -224,28 +339,38 @@ void setup() {
 
 void loop() {
   mostrar();
-
+  calculo_voltaje();
   calculo_resistencia();
   calculo_luz();
   calculo_temperatura();
 
   leer = PINL & 0X0F;
   switch (leer) {
-    case 0:
+    case 0:  //Caso no pasa nada
       break;
 
-    case 1:  // Primer pulsador  0x01
+    case 1:  // Solo primer pulsador voltaje
       pulsa(0);
       break;
 
-    case 2:
+    case 3:  // Se presionan pulsadores uno y dos caso temperatura
       pulsa(1);
       break;
 
-    case 4:
+    case 9:   // Pulsadores 1 y 4 para medir resistencia
       pulsa(2);
       break;
 
+    case 10:   // Pulsadores 2 y 4 para medir luz
+      pulsa(3);
+      break;
+
+
+    case 16: //Quinto pulsador
+      break;
+    
+    case 32: //Sexto pulsador
+      break;
 
     default:
       break;
