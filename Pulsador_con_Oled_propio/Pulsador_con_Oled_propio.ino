@@ -1,5 +1,5 @@
 // BARS JADS
-//Librerias
+//Librerias de pantalla OLED, Nombre de libreria --> ADAFRUIT
 #include<Wire.h>
 #include <Adafruit_GFX.h>
 #include<Adafruit_SSD1306.h>
@@ -62,11 +62,22 @@ float Vout_temperatura;
 float temperatura_celsius;
 //-----------------------------------------------------------------
 
-//Calculos de las variables en loop
 
+//Variable de quinto pulsador--------------------------------------
+short int contador_reinicio = 0;
+//-----------------------------------------------------------------
+
+
+//Variables de sexto pulsador--------------------------------------
+short int contador_variables = 0;
+//-----------------------------------------------------------------
+
+
+
+//Calculos de las variables en loop
 void calculo_voltaje(){
   voltaje_leido = (analogRead(A0)* 5)/1023.0;
-  voltaje_real = voltaje_leido * (50/4.6);
+  voltaje_real = voltaje_leido * (50/5);
 }
 
 void calculo_resistencia(){
@@ -87,8 +98,8 @@ void calculo_luz(){
 
 void calculo_temperatura(){
   valor_temperatura = analogRead(A3);
-  Vout_temperatura = (valor_temperatura/1023)*5000;
-  temperatura_celsius = Vout_temperatura/10;
+  Vout_temperatura = (valor_temperatura*5)/1023.0;
+  temperatura_celsius = Vout_temperatura*100;
 }
 //---------------------------------------------------------------
 
@@ -118,7 +129,7 @@ void parpadeo(){
 }
 
 
-//--------Banderas para activar variables---------
+//--------Banderas para activar variables------------------------------------------
 
 void voltaje(){
   band_voltaje = true;
@@ -140,9 +151,86 @@ void temperatura(){
   band_temperatura = true;
   vacio = false;
 }
-//----------------------------------------------------
+//---------------------------------------------------------------------------------
 
-void mostrar(){
+
+//Acciones de quinto y sexto pulsdor
+void reinicio(){              //Reiniciar programa con quinto pulsador
+
+
+  band_voltaje = false;
+  band_resistencia = false;
+  band_temperatura = false;
+  band_luz = false;
+
+  vacio = true;
+
+
+
+
+  for(int m = 0; m < 4; m++){
+    conteo[m][0] = 0;
+    conteo[m][1] = 0;
+    conteo[m][2] = 0;
+
+    i = 0;
+    j = 0;
+  }
+  leds = 0x00;
+
+
+  mostrar();
+}
+
+void mostrar_variables(){    //Mostrar todas las variables durante un segundo
+
+  PORTA = 0X88;
+
+  display.clearDisplay();
+
+   
+  display.setTextColor(WHITE);      
+  display.setCursor(0,10);
+  display.print("Voltaje: ");
+  display.println(voltaje_real);
+
+    
+  display.setCursor(0,20);
+  display.print("Resistencia es: ");
+  display.println(R2_resistencia);
+    
+
+  display.setCursor(0,30);
+  display.print("Luz: ");
+  display.print(porcentaje_luz);
+  display.println(" % ");
+
+    
+  display.cp437(true);
+  display.setCursor(0,40);
+  display.print("Temperatura: ");
+  display.print(temperatura_celsius);
+  display.write(167);
+  display.println("");
+    
+
+
+  if(temperatura_celsius > 29) {
+    display.setTextColor(WHITE);
+  }else{
+    display.setTextColor(BLACK);
+  }
+  display.setCursor(120,48);
+  display.print("A");
+
+  display.display();
+  delay(1000);
+}
+
+
+//--------------------------------------------------------------------------------------
+
+void mostrar(){                       //Mostrar OLED y contador de SSD
 
   if (vacio == true){
     display.clearDisplay();
@@ -152,8 +240,7 @@ void mostrar(){
     display.display();
     delay(10);
   }
-
-  if (vacio == false){
+  else if (vacio == false){
     
     display.clearDisplay();
 
@@ -223,7 +310,7 @@ void mostrar(){
 }
 
 
-void incremento_SSD(int a){
+void incremento_SSD(int a){           //Incremento SSD
 
   i=conteo[a][0]; //Unidades 
   j=conteo[a][1]; //Decenas
@@ -245,25 +332,16 @@ void incremento_SSD(int a){
 
 
 
-
-
-
-
 void mostrar_SSD(){
-  
   PORTA = dato[i];   //A unidades
   delay(20);
-
 }
 
 
-
-
-
-
 void pulsa(int caso) { //Solo ejecuta la accion se se sueltan el o los pulsadores
-  while (leer == PINL & 0X0F){  
+  while (leer == PINL & 0X3B){  
     delay(20);
+    mostrar();
     parpadeo();
   }
 
@@ -319,18 +397,50 @@ void pulsa(int caso) { //Solo ejecuta la accion se se sueltan el o los pulsadore
       contador_temperatura = 0;
     }
   }
+
+
+  if (caso == 4){    //Caso reinicio
+    contador_reinicio++;
+    contador_temperatura = 0;
+    contador_resistencia = 0;
+    contador_luz = 0;
+    contador_voltaje = 0;
+    if (contador_reinicio >= 2){
+      reinicio();
+      contador_reinicio = 0;
+    }
+  }
+
+
+
+  if (caso == 5){    //Caso mostrar variables
+    contador_variables++;
+    contador_reinicio = 0;
+    contador_temperatura = 0;
+    contador_resistencia = 0;
+    contador_luz = 0;
+    contador_voltaje = 0;
+    if (contador_variables >= 2){
+      mostrar_variables();
+      contador_variables = 0;
+    }
+  }
+
+
+
   
   mostrar();
 }
 
 void setup() {
   Serial.begin(9600);
-  DDRA = 0X00; //SSD
+  DDRA = 0XFF; //SSD
   DDRL = 0X00; //Puerto pulsador
   DDRB = 0xFF; //LEDS 
   delay(100); //Para que inicie bien el OLED
   
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  //Configurar pantalla OLES
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //Iniciar pantalla
   display.setRotation(0);
   display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -338,13 +448,15 @@ void setup() {
 }
 
 void loop() {
-  mostrar();
-  calculo_voltaje();
-  calculo_resistencia();
-  calculo_luz();
-  calculo_temperatura();
+  mostrar();  //Mostrar pantalla
 
-  leer = PINL & 0X0F;
+  //Calculos de variables para que se actualicen 
+  calculo_voltaje(); 
+  calculo_resistencia();
+  calculo_temperatura(); 
+  calculo_luz();
+
+  leer = PINL & 0X3B;
   switch (leer) {
     case 0:  //Caso no pasa nada
       break;
@@ -367,9 +479,11 @@ void loop() {
 
 
     case 16: //Quinto pulsador
+      pulsa(4);
       break;
     
     case 32: //Sexto pulsador
+      pulsa(5);
       break;
 
     default:
