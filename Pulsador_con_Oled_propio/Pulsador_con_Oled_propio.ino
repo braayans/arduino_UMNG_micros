@@ -92,8 +92,6 @@ void calculo_luz(){
   porcentaje_luz = 100 -( Vout_luz - Vmin_luz )/distancia_luz;
   if(porcentaje_luz >= 100.0) porcentaje_luz = 100;
   if(porcentaje_luz <= 0.0) porcentaje_luz = 0;
-  Serial.print(porcentaje_luz);
-  Serial.println("%");
 }
 
 void calculo_temperatura(){
@@ -101,6 +99,10 @@ void calculo_temperatura(){
   Vout_temperatura = (valor_temperatura*5)/1023.0;
   temperatura_celsius = Vout_temperatura*100;
 }
+
+
+
+
 //---------------------------------------------------------------
 
 
