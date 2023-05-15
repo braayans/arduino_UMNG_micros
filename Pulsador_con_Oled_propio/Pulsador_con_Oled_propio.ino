@@ -441,7 +441,7 @@ void setup() {
   DDRB = 0xFF; //LEDS 
   delay(100); //Para que inicie bien el OLED
   
-  //Configurar pantalla OLES
+  //Configurar pantalla OLED
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //Iniciar pantalla
   display.setRotation(0);
   display.setTextSize(1);

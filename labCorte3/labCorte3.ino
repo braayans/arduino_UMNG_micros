@@ -1,11 +1,32 @@
 //Laboratorio de tercer corte de micros. Brayan Romero y Julian Duarte
 //Codigo para el arduino mega del lab
 
+
+//variables para los pulsadores
+const byte dato_SSD[10] = {0XC0, 0XF9, 0XA4, 0XB0, 0X99, 0X92, 0X82, 0XF8, 0X80, 0X98}; //Listado de numeros 0-9 ANODO COMUN SSD
+const byte dato_SSD_error[10] = {0X80, 0Xf2, 0X48, 0X60, 0X33, 0X24, 0X04, 0XF0, 0X00, 0X20}; //SSD en caso de error
+//volatile int conteo[2] = {0 , 0};  //Guarda el numero de veces que se presiona cada contador {unidad,decena}
+volatile int unidad = 0;
+volatile int decena = 0;
+
+//Variables de tiempo 
+volatile unsigned long int v_ini,v_ini2,v_ini3,v_ini4,v_act;
+
+
+//Lista de recepcion de datos
+char dato_recibido = "a";
+
+
+
+//Contador de interrupciones
+unsigned short int contador_interrupciones = 0;
+
+
 //Pulsadores----------------------------------------------------
 const int pulsador1 = 18;
 const int pulsador2 = 19;
-const int pulsador3 = 20;
-const int pulsador4 = 21;
+const int pulsador3 = 2;
+const int pulsador4 = 3;
 //--------------------------------------------------------------
 
 
@@ -22,7 +43,7 @@ volatile bool bandera_4 = false;
 
 //Variables para medir voltaje
 float voltaje_leido;
-volatile float voltaje_real;
+int voltaje_real;
 short int contador_voltaje = 0;
 //--------------------------------------------------------------
 
@@ -34,7 +55,7 @@ const float Vmax_luz = 4.89;
 const float R1_luz = 9700;
 float distancia_luz=(Vmax_luz-Vmin_luz)/100;
 float Vout_luz;
-volatile float porcentaje_luz;
+int porcentaje_luz;
 //----------------------------------------------------------------
 
 
@@ -43,7 +64,7 @@ short int contador_resistencia = 0;
 const float R1_resistencia = 9670;
 const float Vin_resistencia = 4.99;
 float Vout_resistencia = 0;
-volatile int R2_resistencia;
+int R2_resistencia;
 //----------------------------------------------------------------
 
 
@@ -51,54 +72,76 @@ volatile int R2_resistencia;
 short int contador_temperatura = 0;
 float valor_temperatura;
 float Vout_temperatura;
-volatile float temperatura_celsius;
+int temperatura_celsius;
 //-----------------------------------------------------------------
+
+
+
 
 //Manejo de interrupciones-----------------------------------------
 void pulsador_1_fun(){
- //Se envia el numero del pulsador y el dato del voltaje
-  Serial.print(1);
-  Serial.print(voltaje_real);
 
-  detachInterrupt(digitalPinToInterrupt(pulsador1));
+  unidad++;
+  if (unidad > 9){
+    unidad = 0;
+    decena++;
+    if(decena > 9){
+      unidad = 0;
+      decena = 0;
+    }
+  }
   bandera_1 = true;
+  detachInterrupt(digitalPinToInterrupt(pulsador1));
 }
 
 void pulsador_2_fun(){
-// Se envia el numero del pulsador y el dato de temperatura
-  Serial.print(2);
-  Serial.print(temperatura_celsius);
 
-  detachInterrupt(digitalPinToInterrupt(pulsador2));
+  unidad++;
+  if (unidad > 9){
+    unidad = 0;
+    decena++;
+    if(decena > 9){
+      unidad = 0;
+      decena = 0;
+    }
+  }
   bandera_2 = true;
+  detachInterrupt(digitalPinToInterrupt(pulsador2));
 }
 
 void pulsador_3_fun(){
-// Se envia el numero del pulsador y el dato de resistencia
-  Serial.print(3);
-  Serial.print(R2_resistencia);
 
-  detachInterrupt(digitalPinToInterrupt(pulsado3));
+  unidad++;
+  if (unidad > 9){
+    unidad = 0;
+    decena++;
+    if(decena > 9){
+      unidad = 0;
+      decena = 0;
+    }
+  }
+
   bandera_3 = true;
+  detachInterrupt(digitalPinToInterrupt(pulsador3));
 }
 
 void pulsador_4_fun(){
 
-  Serial.print(4);
-  Serial.print(porcentaje_luz);
 
-  detachInterrupt(digitalPinToInterrupt(pulsador4));
+  unidad++;
+  if (unidad > 9){
+    unidad = 0;
+    decena++;
+    if(decena > 9){
+      unidad = 0;
+      decena = 0;
+    }
+  }
+
   bandera_4 = true;
+  detachInterrupt(digitalPinToInterrupt(pulsador4));
 }
 
-void pulsador_5_fun(){
-
-  Serial.print(5);
-
-
-  detachInterrupt(digitalPinToInterrupt(pulsador5));
-  bandera_5 = true;
-}
 
 //-------------------------------------------------------------------
 
@@ -144,6 +187,11 @@ void calculo_temperatura(){
 
 //--------------------------SETUP Y LOOP----------------------------------------------
 void setup() {
+  Serial.begin(9600);
+  DDRA = 0XFF; //Pulsador de unidades
+  DDRC = 0XFF; //Pulsador de decenas
+
+
   pinMode(pulsador1,INPUT);
   pinMode(pulsador2,INPUT);
   pinMode(pulsador3,INPUT);
@@ -153,16 +201,24 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(pulsador2), pulsador_2_fun, RISING);
   attachInterrupt(digitalPinToInterrupt(pulsador3), pulsador_3_fun, RISING);
   attachInterrupt(digitalPinToInterrupt(pulsador4), pulsador_4_fun, RISING);
-  //attachInterrupt(digitalPinToInterrupt(pulsador5), boton, RISING); 
+ 
 
 
   v_ini = millis();
+  v_ini2 = millis();
+  v_ini3 = millis();
+  v_ini4 = millis();
+
+  PORTA = dato_SSD[unidad];
+  PORTC = dato_SSD[decena];
 }
 
 
 
 
 void loop() {
+
+
   calculo_voltaje();
   calculo_resistencia();
   calculo_luz();
@@ -170,68 +226,111 @@ void loop() {
 
 
 
+  if (Serial.available()){
+    delay(5);
+    char  dato_recibido_pru = Serial.read();
+    Serial.print("Este es mi dato: ");
+    Serial.println(dato_recibido_pru);
+
+    if(dato_recibido_pru == 'm'){
+      PORTC = 0XFF;
+    }
+
+  }
 
 
 
 
+  //Pulsadores 
+  // Primer pulsador
 
-
-
-
-
-//Pulsadores 
-// Primer pulsador
   if(bandera_1 == true){
     v_act = millis();
-    if(v_act - v_ini > 50){
-      //Colocar envio de la info de voltaje al arduino UNO
+    if(v_act - v_ini > 800){
+      PORTA = dato_SSD[unidad];
+      PORTC = dato_SSD[decena];
+
+      Serial.write(1);
+      Serial.write(voltaje_real);
+      Serial.write(temperatura_celsius);
+      Serial.write(R2_resistencia);
+      Serial.write(porcentaje_luz); 
+
+
       v_ini = millis();
       if(digitalRead(pulsador1) == 0){
         attachInterrupt(digitalPinToInterrupt(pulsador1), pulsador_1_fun, RISING);
         bandera_1 = false;
+      }
     }
   } 
 
-//Segundo pulsador
+  //Segundo pulsador
  if(bandera_2 == true){
     v_act = millis();
-    if(v_act - v_ini > 50){
-      //Colocar envio de la info de resistencia al arduino UNO
-      v_ini = millis();
+    if(v_act - v_ini2 > 800){
+      PORTA = dato_SSD[unidad];
+      PORTC = dato_SSD[decena];
+
+      Serial.write(2);
+      Serial.write(voltaje_real);
+      Serial.write(temperatura_celsius);
+      Serial.write(R2_resistencia);
+      Serial.write(porcentaje_luz); 
+
+      v_ini2 = millis();
       if(digitalRead(pulsador2) == 0){
         attachInterrupt(digitalPinToInterrupt(pulsador2), pulsador_2_fun, RISING);
         bandera_2 = false;
+      }
     }
   } 
 
-// Tercer pulsador
+  // Tercer pulsador
  if(bandera_3 == true){
     v_act = millis();
-    if(v_act - v_ini > 50){
-      //Colocar envio de la info de voltaje al arduino UNO
-      v_ini = millis();
+    if(v_act - v_ini3 > 800){
+      PORTA = dato_SSD[unidad];
+      PORTC = dato_SSD[decena];
+
+      Serial.write(0x64);
+      Serial.print(4);
+      Serial.print(5);
+
+
+
+      v_ini3 = millis();
       if(digitalRead(pulsador3) == 0){
         attachInterrupt(digitalPinToInterrupt(pulsador3), pulsador_3_fun, RISING);
         bandera_3 = false;
+      }
     }
   } 
 
 
-// Cuarto pulsador 
+  // Cuarto pulsador 
  if(bandera_4 == true){
     v_act = millis();
-    if(v_act - v_ini > 50){
-      //Colocar envio de la info de voltaje al arduino UNO
-      v_ini = millis();
+    if(v_act - v_ini4 > 800){
+      PORTA = dato_SSD[unidad];
+      PORTC = dato_SSD[decena];
+
+      Serial.write(4);
+      Serial.write(voltaje_real);
+      Serial.write(temperatura_celsius);
+      Serial.write(R2_resistencia);
+      Serial.write(porcentaje_luz); 
+
+      v_ini4 = millis();
       if(digitalRead(pulsador4) == 0){
         attachInterrupt(digitalPinToInterrupt(pulsador4), pulsador_4_fun, RISING);
         bandera_4 = false;
+      }
     }
   } 
 
 
+
+
   
-
-
-
 }
